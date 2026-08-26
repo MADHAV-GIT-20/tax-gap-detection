@@ -19,3 +19,6 @@ Thumbs.db
 
 # Local env overrides
 .env
+
+# Machine-local Maven settings (internal mirror; not for submission)
+build-settings.xml
