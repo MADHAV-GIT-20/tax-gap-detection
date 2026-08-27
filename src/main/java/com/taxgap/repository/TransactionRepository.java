@@ -1,7 +1,7 @@
 package com.taxgap.repository;
 
-import com.taxgap.domain.Transaction;
-import com.taxgap.repository.projection.CustomerSummaryProjection;
+import com.taxgap.dto.CustomerSummaryDto;
+import com.taxgap.entity.Transaction;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 
@@ -12,22 +12,23 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
     List<Transaction> findByCustomerId(String customerId);
 
     /**
-     * Customer tax summary report, aggregated in SQL (not in memory).
-     * complianceScore = 100 - (nonCompliant / total * 100).
+     * Customer tax summary, aggregated by the database (not in Java memory).
+     * Only SUCCESS transactions are counted.
      */
     @Query("""
-            SELECT t.customerId AS customerId,
-                   COALESCE(SUM(t.amount), 0) AS totalAmount,
-                   COALESCE(SUM(t.reportedTax), 0) AS totalReportedTax,
-                   COALESCE(SUM(t.expectedTax), 0) AS totalExpectedTax,
-                   COALESCE(SUM(t.taxGap), 0) AS totalTaxGap,
-                   COUNT(t) AS totalTransactions,
-                   SUM(CASE WHEN t.complianceStatus = com.taxgap.domain.enums.ComplianceStatus.NON_COMPLIANT
-                            THEN 1 ELSE 0 END) AS nonCompliantTransactions
+            SELECT new com.taxgap.dto.CustomerSummaryDto(
+                       t.customerId,
+                       SUM(t.amount),
+                       SUM(t.reportedTax),
+                       SUM(t.expectedTax),
+                       SUM(t.taxGap),
+                       COUNT(t),
+                       SUM(CASE WHEN t.complianceStatus = com.taxgap.enums.ComplianceStatus.NON_COMPLIANT
+                                THEN 1L ELSE 0L END))
             FROM Transaction t
-            WHERE t.validationStatus = com.taxgap.domain.enums.ValidationStatus.SUCCESS
+            WHERE t.validationStatus = com.taxgap.enums.ValidationStatus.SUCCESS
             GROUP BY t.customerId
             ORDER BY t.customerId
             """)
-    List<CustomerSummaryProjection> customerTaxSummary();
+    List<CustomerSummaryDto> customerTaxSummary();
 }

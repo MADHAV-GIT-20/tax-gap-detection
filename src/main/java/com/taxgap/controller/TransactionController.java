@@ -2,42 +2,46 @@ package com.taxgap.controller;
 
 import com.taxgap.dto.BatchUploadRequest;
 import com.taxgap.dto.BatchUploadResponse;
-import com.taxgap.dto.TransactionView;
-import com.taxgap.service.TransactionProcessingService;
-import com.taxgap.service.TransactionQueryService;
+import com.taxgap.entity.Transaction;
+import com.taxgap.service.TransactionService;
 import jakarta.validation.Valid;
-import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 
 @RestController
 @RequestMapping("/api/transactions")
-@RequiredArgsConstructor
 public class TransactionController {
 
-    private final TransactionProcessingService processingService;
-    private final TransactionQueryService queryService;
+    private final TransactionService transactionService;
 
-    /** Upload & validate a batch of financial transactions. */
+    public TransactionController(TransactionService transactionService) {
+        this.transactionService = transactionService;
+    }
+
+    /** Upload and validate a batch of transactions. */
     @PostMapping("/batch")
     public ResponseEntity<BatchUploadResponse> upload(@Valid @RequestBody BatchUploadRequest request) {
-        BatchUploadResponse response = processingService.process(request);
+        BatchUploadResponse response = transactionService.process(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
     /** List stored transactions, optionally filtered by customerId. */
     @GetMapping
-    public List<TransactionView> list(@RequestParam(required = false) String customerId) {
-        return queryService.findAll(customerId).stream()
-                .map(TransactionView::from)
-                .toList();
+    public List<Transaction> list(@RequestParam(required = false) String customerId) {
+        return transactionService.findAll(customerId);
     }
 
     @GetMapping("/{id}")
-    public TransactionView getOne(@PathVariable Long id) {
-        return TransactionView.from(queryService.findById(id));
+    public Transaction getOne(@PathVariable Long id) {
+        return transactionService.findById(id);
     }
 }

@@ -1,27 +1,28 @@
 package com.taxgap.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.taxgap.domain.AuditLog;
-import com.taxgap.domain.Transaction;
-import com.taxgap.domain.enums.EventType;
+import com.taxgap.entity.AuditLog;
+import com.taxgap.entity.Transaction;
+import com.taxgap.enums.EventType;
 import com.taxgap.repository.AuditLogRepository;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
- * Writes an audit-trail entry for every ingestion, tax computation and rule execution.
+ * Writes an audit-trail row for every ingestion, tax computation and rule execution.
  */
 @Service
-@RequiredArgsConstructor
-@Slf4j
 public class AuditService {
 
     private final AuditLogRepository auditLogRepository;
-    private final ObjectMapper objectMapper;
+    private final ObjectMapper objectMapper = new ObjectMapper();
+
+    public AuditService(AuditLogRepository auditLogRepository) {
+        this.auditLogRepository = auditLogRepository;
+    }
 
     public void logIngestion(String transactionId, String rawPayload) {
         Map<String, Object> detail = new LinkedHashMap<>();
@@ -47,19 +48,28 @@ public class AuditService {
         save(EventType.RULE_EXECUTION, transactionId, detail);
     }
 
-    private void save(EventType eventType, String transactionId, Map<String, Object> detail) {
-        auditLogRepository.save(AuditLog.builder()
-                .eventType(eventType)
-                .transactionId(transactionId)
-                .detailJson(toJson(detail))
-                .build());
+    public List<AuditLog> find(String transactionId, EventType eventType) {
+        if (transactionId != null && !transactionId.isBlank()) {
+            return auditLogRepository.findByTransactionIdOrderByTimestampAsc(transactionId);
+        }
+        if (eventType != null) {
+            return auditLogRepository.findByEventTypeOrderByTimestampDesc(eventType);
+        }
+        return auditLogRepository.findAll();
     }
 
-    private String toJson(Object o) {
+    private void save(EventType eventType, String transactionId, Map<String, Object> detail) {
+        AuditLog log = new AuditLog();
+        log.setEventType(eventType);
+        log.setTransactionId(transactionId);
+        log.setDetailJson(toJson(detail));
+        auditLogRepository.save(log);
+    }
+
+    private String toJson(Object value) {
         try {
-            return objectMapper.writeValueAsString(o);
+            return objectMapper.writeValueAsString(value);
         } catch (Exception e) {
-            log.warn("Failed to serialize audit detail", e);
             return "{}";
         }
     }

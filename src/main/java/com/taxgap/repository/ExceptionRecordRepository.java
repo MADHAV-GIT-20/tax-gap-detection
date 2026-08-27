@@ -1,8 +1,7 @@
 package com.taxgap.repository;
 
-import com.taxgap.domain.ExceptionRecord;
-import com.taxgap.domain.enums.Severity;
-import com.taxgap.repository.projection.CountByKeyProjection;
+import com.taxgap.entity.ExceptionRecord;
+import com.taxgap.enums.Severity;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -12,7 +11,7 @@ import java.util.List;
 public interface ExceptionRecordRepository extends JpaRepository<ExceptionRecord, Long> {
 
     /**
-     * Dynamic filtering: any of the three params may be null (ignored).
+     * Search with optional filters. Any argument that is null is ignored.
      */
     @Query("""
             SELECT e FROM ExceptionRecord e
@@ -27,11 +26,7 @@ public interface ExceptionRecordRepository extends JpaRepository<ExceptionRecord
 
     long countBySeverity(Severity severity);
 
-    @Query("""
-            SELECT e.customerId AS key, COUNT(e) AS count
-            FROM ExceptionRecord e
-            GROUP BY e.customerId
-            ORDER BY e.customerId
-            """)
-    List<CountByKeyProjection> countByCustomer();
+    /** Returns rows of [customerId, count] for the exception summary report. */
+    @Query("SELECT e.customerId, COUNT(e) FROM ExceptionRecord e GROUP BY e.customerId ORDER BY e.customerId")
+    List<Object[]> countByCustomer();
 }

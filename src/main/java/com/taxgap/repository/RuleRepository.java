@@ -1,6 +1,6 @@
 package com.taxgap.repository;
 
-import com.taxgap.domain.Rule;
+import com.taxgap.entity.Rule;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;

@@ -1,4 +1,4 @@
-package com.taxgap.domain.enums;
+package com.taxgap.enums;
 
 public enum ValidationStatus {
     SUCCESS,

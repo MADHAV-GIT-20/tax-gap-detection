@@ -1,52 +1,54 @@
 package com.taxgap.service;
 
-import com.taxgap.domain.ExceptionRecord;
-import com.taxgap.domain.enums.Severity;
 import com.taxgap.dto.ExceptionSummaryDto;
+import com.taxgap.entity.ExceptionRecord;
+import com.taxgap.enums.Severity;
 import com.taxgap.repository.ExceptionRecordRepository;
-import com.taxgap.repository.projection.CountByKeyProjection;
-import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
 @Service
-@RequiredArgsConstructor
 public class ExceptionService {
 
     private final ExceptionRecordRepository exceptionRepository;
 
-    @Transactional
-    public List<ExceptionRecord> saveAll(List<ExceptionRecord> records) {
-        return exceptionRepository.saveAll(records);
+    public ExceptionService(ExceptionRecordRepository exceptionRepository) {
+        this.exceptionRepository = exceptionRepository;
     }
 
-    @Transactional(readOnly = true)
+    public void saveAll(List<ExceptionRecord> records) {
+        exceptionRepository.saveAll(records);
+    }
+
     public List<ExceptionRecord> search(String customerId, Severity severity, String ruleName) {
-        return exceptionRepository.search(emptyToNull(customerId), severity, emptyToNull(ruleName));
+        return exceptionRepository.search(blankToNull(customerId), severity, blankToNull(ruleName));
     }
 
-    @Transactional(readOnly = true)
     public ExceptionSummaryDto summary() {
-        long total = exceptionRepository.count();
+        ExceptionSummaryDto dto = new ExceptionSummaryDto();
+        dto.setTotalExceptions(exceptionRepository.count());
 
         Map<String, Long> bySeverity = new LinkedHashMap<>();
-        for (Severity s : Severity.values()) {
-            bySeverity.put(s.name(), exceptionRepository.countBySeverity(s));
+        for (Severity severity : Severity.values()) {
+            bySeverity.put(severity.name(), exceptionRepository.countBySeverity(severity));
         }
+        dto.setCountBySeverity(bySeverity);
 
         Map<String, Long> byCustomer = new LinkedHashMap<>();
-        for (CountByKeyProjection p : exceptionRepository.countByCustomer()) {
-            byCustomer.put(p.getKey(), p.getCount());
+        for (Object[] row : exceptionRepository.countByCustomer()) {
+            String customerId = (String) row[0];
+            Long count = (Long) row[1];
+            byCustomer.put(customerId, count);
         }
+        dto.setCountByCustomer(byCustomer);
 
-        return new ExceptionSummaryDto(total, bySeverity, byCustomer);
+        return dto;
     }
 
-    private String emptyToNull(String s) {
-        return (s == null || s.isBlank()) ? null : s;
+    private String blankToNull(String value) {
+        return (value == null || value.isBlank()) ? null : value;
     }
 }

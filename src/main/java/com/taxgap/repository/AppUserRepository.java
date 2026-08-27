@@ -1,6 +1,6 @@
 package com.taxgap.repository;
 
-import com.taxgap.domain.AppUser;
+import com.taxgap.entity.AppUser;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.Optional;

@@ -4,6 +4,7 @@ import org.springframework.data.domain.Example;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.repository.query.FluentQuery;
 
 import java.util.List;
@@ -11,20 +12,16 @@ import java.util.Optional;
 import java.util.function.Function;
 
 /**
- * Reusable no-op base for hand-written repository fakes used in pure-JUnit tests
- * (no Mockito). Every JpaRepository method throws by default; a concrete test
- * fake extends this and overrides only the few methods its test actually needs.
- *
- * @param <T>  entity type
- * @param <ID> id type
+ * Test-only base that provides "not implemented" versions of every JpaRepository
+ * method, so a fake repository in a test only has to override the few methods it
+ * actually uses. This lets the tests run on plain JUnit without Mockito.
  */
-public abstract class FakeJpaRepository<T, ID> implements org.springframework.data.jpa.repository.JpaRepository<T, ID> {
+public abstract class FakeJpaRepository<T, ID> implements JpaRepository<T, ID> {
 
     private UnsupportedOperationException nope() {
-        return new UnsupportedOperationException("not stubbed in this fake");
+        return new UnsupportedOperationException("not implemented in this fake");
     }
 
-    // CrudRepository
     @Override public <S extends T> S save(S entity) { throw nope(); }
     @Override public <S extends T> List<S> saveAll(Iterable<S> entities) { throw nope(); }
     @Override public Optional<T> findById(ID id) { throw nope(); }
@@ -37,12 +34,8 @@ public abstract class FakeJpaRepository<T, ID> implements org.springframework.da
     @Override public void deleteAllById(Iterable<? extends ID> ids) { throw nope(); }
     @Override public void deleteAll(Iterable<? extends T> entities) { throw nope(); }
     @Override public void deleteAll() { throw nope(); }
-
-    // PagingAndSortingRepository
     @Override public List<T> findAll(Sort sort) { throw nope(); }
     @Override public Page<T> findAll(Pageable pageable) { throw nope(); }
-
-    // JpaRepository
     @Override public void flush() { throw nope(); }
     @Override public <S extends T> S saveAndFlush(S entity) { throw nope(); }
     @Override public <S extends T> List<S> saveAllAndFlush(Iterable<S> entities) { throw nope(); }
@@ -52,8 +45,6 @@ public abstract class FakeJpaRepository<T, ID> implements org.springframework.da
     @Override public T getOne(ID id) { throw nope(); }
     @Override public T getById(ID id) { throw nope(); }
     @Override public T getReferenceById(ID id) { throw nope(); }
-
-    // QueryByExampleExecutor
     @Override public <S extends T> Optional<S> findOne(Example<S> example) { throw nope(); }
     @Override public <S extends T> List<S> findAll(Example<S> example) { throw nope(); }
     @Override public <S extends T> List<S> findAll(Example<S> example, Sort sort) { throw nope(); }

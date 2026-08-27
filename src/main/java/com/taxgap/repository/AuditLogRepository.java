@@ -1,7 +1,7 @@
 package com.taxgap.repository;
 
-import com.taxgap.domain.AuditLog;
-import com.taxgap.domain.enums.EventType;
+import com.taxgap.entity.AuditLog;
+import com.taxgap.enums.EventType;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;

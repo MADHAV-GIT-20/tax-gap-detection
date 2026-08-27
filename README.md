@@ -82,7 +82,7 @@ The JaCoCo HTML report is generated at:
 target/site/jacoco/index.html
 ```
 
-Measured coverage for the **service + rule engine** packages is **~62%**
+Measured coverage for the **service** package is **~83%**
 (requirement: 40–50%).
 
 ---
@@ -182,14 +182,12 @@ curl -u admin:admin123 -X PATCH http://localhost:8080/api/rules/1 \
 ```
 src/main/java/com/taxgap
 ├── controller      REST endpoints + global exception handler
-├── service         business logic + orchestration
-│   └── rules       rule engine strategies (one per RuleType)
-├── repository      Spring Data JPA repositories + projections
-├── domain          JPA entities
-│   └── enums       status/type enums
+├── service         business logic (TransactionService, RuleService, ...)
+├── repository      Spring Data JPA repositories
+├── entity          JPA entities
+├── enums           status/type enums
 ├── dto             request/response objects
-├── security        Spring Security config + UserDetailsService
-└── config          startup data seeder
+└── config          security, user details, startup data seeder
 ```
 
 ---

@@ -11,15 +11,18 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.NoSuchElementException;
 
+/**
+ * Turns exceptions into clean JSON error responses.
+ */
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<Map<String, Object>> handleValidation(MethodArgumentNotValidException ex) {
-        StringBuilder sb = new StringBuilder();
+        StringBuilder message = new StringBuilder();
         ex.getBindingResult().getFieldErrors()
-                .forEach(fe -> sb.append(fe.getField()).append(": ").append(fe.getDefaultMessage()).append("; "));
-        return build(HttpStatus.BAD_REQUEST, sb.toString());
+                .forEach(fe -> message.append(fe.getField()).append(": ").append(fe.getDefaultMessage()).append("; "));
+        return build(HttpStatus.BAD_REQUEST, message.toString());
     }
 
     @ExceptionHandler(NoSuchElementException.class)
@@ -28,7 +31,7 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(Exception.class)
-    public ResponseEntity<Map<String, Object>> handleGeneric(Exception ex) {
+    public ResponseEntity<Map<String, Object>> handleOther(Exception ex) {
         return build(HttpStatus.INTERNAL_SERVER_ERROR, ex.getMessage());
     }
 
