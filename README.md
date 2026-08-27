@@ -85,6 +85,8 @@ target/site/jacoco/index.html
 Measured coverage for the **service** package is **~83%**
 (requirement: 40–50%).
 
+![Test coverage report](docs/coverage.png)
+
 ---
 
 ## 5. API reference
