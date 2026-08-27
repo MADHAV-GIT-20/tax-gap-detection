@@ -13,41 +13,49 @@ import com.taxgap.service.rules.GstSlabViolationEvaluator;
 import com.taxgap.service.rules.HighValueEvaluator;
 import com.taxgap.service.rules.RefundValidationEvaluator;
 import com.taxgap.service.rules.RuleEvaluator;
-import org.junit.jupiter.api.BeforeEach;
+import com.taxgap.support.FakeJpaRepository;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.anyBoolean;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.Mockito.*;
 
-@ExtendWith(MockitoExtension.class)
+/**
+ * Pure-JUnit test (no Mockito): dependencies are hand-written fakes.
+ */
 class RuleEngineServiceTest {
 
-    @Mock
-    private RuleRepository ruleRepository;
-    @Mock
-    private TransactionRepository transactionRepository;
-    @Mock
-    private AuditService auditService;
+    private final ObjectMapper mapper = new ObjectMapper();
+    private final List<RuleEvaluator> evaluators = List.of(
+            new HighValueEvaluator(mapper),
+            new RefundValidationEvaluator(),
+            new GstSlabViolationEvaluator(mapper));
 
-    private RuleEngineService ruleEngineService;
+    // ---- fakes ----
+    static class FakeRuleRepository extends FakeJpaRepository<Rule, Long> implements RuleRepository {
+        List<Rule> enabled = List.of();
+        @Override public List<Rule> findByEnabledTrue() { return enabled; }
+        @Override public boolean existsByRuleName(String ruleName) { return false; }
+    }
 
-    @BeforeEach
-    void setUp() {
-        ObjectMapper mapper = new ObjectMapper();
-        List<RuleEvaluator> evaluators = List.of(
-                new HighValueEvaluator(mapper),
-                new RefundValidationEvaluator(),
-                new GstSlabViolationEvaluator(mapper));
-        ruleEngineService = new RuleEngineService(
-                ruleRepository, transactionRepository, auditService, mapper, evaluators);
+    static class FakeTransactionRepository extends FakeJpaRepository<Transaction, Long> implements TransactionRepository {
+        List<Transaction> byCustomer = List.of();
+        @Override public List<Transaction> findByCustomerId(String customerId) { return byCustomer; }
+        @Override public List<com.taxgap.repository.projection.CustomerSummaryProjection> customerTaxSummary() {
+            return List.of();
+        }
+    }
+
+    /** Records rule-execution audit calls instead of writing to a DB. */
+    static class RecordingAuditService extends AuditService {
+        int ruleExecCount = 0;
+        RecordingAuditService() { super(null, null); }
+        @Override public void logIngestion(String transactionId, String rawPayload) { }
+        @Override public void logTaxComputation(Transaction txn) { }
+        @Override public void logRuleExecution(String transactionId, String ruleName, boolean violated) {
+            ruleExecCount++;
+        }
     }
 
     private Transaction txn() {
@@ -68,25 +76,32 @@ class RuleEngineServiceTest {
 
     @Test
     void runsActiveRulesAndReturnsExceptionsAndAudits() {
-        when(ruleRepository.findByEnabledTrue()).thenReturn(List.of(highValueRule()));
-        when(transactionRepository.findByCustomerId("C1")).thenReturn(List.of());
+        FakeRuleRepository rules = new FakeRuleRepository();
+        rules.enabled = List.of(highValueRule());
+        FakeTransactionRepository txns = new FakeTransactionRepository();
+        RecordingAuditService audit = new RecordingAuditService();
 
-        List<ExceptionRecord> result = ruleEngineService.runRules(txn());
+        RuleEngineService engine = new RuleEngineService(rules, txns, audit, mapper, evaluators);
+
+        List<ExceptionRecord> result = engine.runRules(txn());
 
         assertThat(result).hasSize(1);
         assertThat(result.get(0).getRuleName()).isEqualTo("HIGH_VALUE_TRANSACTION");
         assertThat(result.get(0).getSeverity()).isEqualTo(Severity.HIGH);
-        verify(auditService).logRuleExecution(eq("T1"), eq("HIGH_VALUE_TRANSACTION"), anyBoolean());
+        assertThat(audit.ruleExecCount).isEqualTo(1);
     }
 
     @Test
     void noExceptionsWhenNoRulesActive() {
-        when(ruleRepository.findByEnabledTrue()).thenReturn(List.of());
-        when(transactionRepository.findByCustomerId("C1")).thenReturn(List.of());
+        FakeRuleRepository rules = new FakeRuleRepository();       // enabled = empty
+        FakeTransactionRepository txns = new FakeTransactionRepository();
+        RecordingAuditService audit = new RecordingAuditService();
 
-        List<ExceptionRecord> result = ruleEngineService.runRules(txn());
+        RuleEngineService engine = new RuleEngineService(rules, txns, audit, mapper, evaluators);
+
+        List<ExceptionRecord> result = engine.runRules(txn());
 
         assertThat(result).isEmpty();
-        verify(auditService, never()).logRuleExecution(anyString(), anyString(), anyBoolean());
+        assertThat(audit.ruleExecCount).isZero();
     }
 }

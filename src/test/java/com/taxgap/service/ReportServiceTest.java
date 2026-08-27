@@ -1,29 +1,27 @@
 package com.taxgap.service;
 
+import com.taxgap.domain.Transaction;
 import com.taxgap.dto.CustomerSummaryDto;
 import com.taxgap.repository.TransactionRepository;
 import com.taxgap.repository.projection.CustomerSummaryProjection;
+import com.taxgap.support.FakeJpaRepository;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Mockito.when;
 
-@ExtendWith(MockitoExtension.class)
+/**
+ * Pure-JUnit test (no Mockito): the repository is a hand-written fake.
+ */
 class ReportServiceTest {
 
-    @Mock
-    private TransactionRepository transactionRepository;
-    @Mock
-    private ExceptionService exceptionService;
-    @InjectMocks
-    private ReportService reportService;
+    static class FakeTransactionRepository extends FakeJpaRepository<Transaction, Long> implements TransactionRepository {
+        List<CustomerSummaryProjection> summary = List.of();
+        @Override public List<Transaction> findByCustomerId(String customerId) { return List.of(); }
+        @Override public List<CustomerSummaryProjection> customerTaxSummary() { return summary; }
+    }
 
     private CustomerSummaryProjection projection(String cust, long total, long nonCompliant) {
         return new CustomerSummaryProjection() {
@@ -37,20 +35,25 @@ class ReportServiceTest {
         };
     }
 
+    private ReportService newService(List<CustomerSummaryProjection> summary) {
+        FakeTransactionRepository repo = new FakeTransactionRepository();
+        repo.summary = summary;
+        // exceptionService is unused by customerTaxSummary()
+        return new ReportService(repo, null);
+    }
+
     @Test
     void complianceScoreIs100WhenAllCompliant() {
-        when(transactionRepository.customerTaxSummary())
-                .thenReturn(List.of(projection("C1", 4, 0)));
-        List<CustomerSummaryDto> result = reportService.customerTaxSummary();
+        ReportService service = newService(List.of(projection("C1", 4, 0)));
+        List<CustomerSummaryDto> result = service.customerTaxSummary();
         assertThat(result.get(0).complianceScore()).isEqualByComparingTo("100.00");
     }
 
     @Test
     void complianceScoreReflectsNonCompliantRatio() {
         // 1 of 4 non-compliant -> 100 - 25 = 75
-        when(transactionRepository.customerTaxSummary())
-                .thenReturn(List.of(projection("C1", 4, 1)));
-        List<CustomerSummaryDto> result = reportService.customerTaxSummary();
+        ReportService service = newService(List.of(projection("C1", 4, 1)));
+        List<CustomerSummaryDto> result = service.customerTaxSummary();
         assertThat(result.get(0).complianceScore()).isEqualByComparingTo("75.00");
         assertThat(result.get(0).totalTaxGap()).isEqualByComparingTo("80");
     }

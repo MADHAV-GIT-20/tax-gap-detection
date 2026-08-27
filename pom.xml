@@ -12,7 +12,7 @@
     </parent>
 
     <groupId>com.taxgap</groupId>
-    <artifactId>tax-gap-service</artifactId>
+    <artifactId>tax-gap-detection</artifactId>
     <version>1.0.0</version>
     <name>tax-gap-service</name>
     <description>Tax Gap Detection &amp; Compliance Validation Service</description>
@@ -21,9 +21,6 @@
         <java.version>17</java.version>
         <!-- Pinned: Lombok must support the JDK running the build (JDK 25 here) -->
         <lombok.version>1.18.46</lombok.version>
-        <!-- Pinned: Mockito/ByteBuddy must support JDK 25 bytecode for mock-based tests -->
-        <mockito.version>5.23.0</mockito.version>
-        <byte-buddy.version>1.18.12</byte-buddy.version>
     </properties>
 
     <dependencies>
@@ -61,6 +58,17 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-test</artifactId>
             <scope>test</scope>
+            <!-- Tests use pure JUnit + hand-written fakes; Mockito is not used -->
+            <exclusions>
+                <exclusion>
+                    <groupId>org.mockito</groupId>
+                    <artifactId>mockito-core</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>org.mockito</groupId>
+                    <artifactId>mockito-junit-jupiter</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
         <dependency>
             <groupId>org.springframework.security</groupId>
